@@ -1,5 +1,5 @@
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useState } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useOBD } from '../../contexts/OBDContext';
 import { LinearGradient } from 'expo-linear-gradient';
