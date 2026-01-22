@@ -194,6 +194,40 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  userHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    elevation: 2,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  username: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  adminBadge: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  creditContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  creditText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  logoutButton: {
+    padding: 8,
+  },
   card: {
     margin: 16,
     padding: 20,
