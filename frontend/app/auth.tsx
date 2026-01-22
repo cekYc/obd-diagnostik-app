@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -12,101 +14,113 @@ export default function AuthScreen() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!username || !password) {
+    if (!username || !password || (!isLogin && !email)) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
       return;
     }
+
+    setLoading(true);
     try {
       if (isLogin) {
         await login(username, password);
+        router.replace('/(tabs)/home');
       } else {
-        if (!email) {
-          Alert.alert('Hata', 'E-posta gerekli');
-          return;
-        }
         await register(username, email, password);
+        router.replace('/(tabs)/home');
       }
-      router.replace('/(tabs)/home');
     } catch (error: any) {
-      Alert.alert('Hata', error.message || 'Bir hata oluştu');
+      if (error.message && error.message.includes('{')) {
+        try {
+          const errorData = JSON.parse(error.message);
+          if (errorData.suggestions) {
+            Alert.alert(errorData.message || 'Bu kullanıcı adı alınmış', `Alternatif öneriler:\n${errorData.suggestions.join('\n')}`);
+            return;
+          }
+          Alert.alert('Hata', errorData.message || 'Bir hata oluştu');
+        } catch { Alert.alert('Hata', error.message); }
+      } else {
+        Alert.alert('Hata', error.message || 'Bir hata oluştu');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>OBD-II Diagnostik</Text>
-        
-        <View style={styles.tabs}>
-          <TouchableOpacity 
-            style={[styles.tab, isLogin && { backgroundColor: theme.colors.primary }]} 
-            onPress={() => setIsLogin(true)}
-          >
-            <Text style={styles.tabText}>Giriş</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, !isLogin && { backgroundColor: theme.colors.primary }]} 
-            onPress={() => setIsLogin(false)}
-          >
-            <Text style={styles.tabText}>Kayıt</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.input, { backgroundColor: theme.colors.surface }]}>
-          <TextInput 
-            placeholder="Kullanıcı Adı" 
-            value={username} 
-            onChangeText={setUsername}
-            style={{ color: theme.colors.text, padding: 4 }}
-            placeholderTextColor={theme.colors.textSecondary}
-          />
-        </View>
-
-        {!isLogin && (
-          <View style={[styles.input, { backgroundColor: theme.colors.surface }]}>
-            <TextInput 
-              placeholder="E-posta" 
-              value={email} 
-              onChangeText={setEmail}
-              style={{ color: theme.colors.text, padding: 4 }}
-              placeholderTextColor={theme.colors.textSecondary}
-              keyboardType="email-address"
-            />
+    <LinearGradient colors={[theme.colors.background, theme.colors.surface]} style={styles.container}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={[styles.logoContainer, { borderColor: theme.colors.primary }]}>
+            <Ionicons name="car-sport" size={60} color={theme.colors.primary} />
           </View>
-        )}
 
-        <View style={[styles.input, { backgroundColor: theme.colors.surface }]}>
-          <TextInput 
-            placeholder="Şifre" 
-            value={password} 
-            onChangeText={setPassword}
-            secureTextEntry
-            style={{ color: theme.colors.text, padding: 4 }}
-            placeholderTextColor={theme.colors.textSecondary}
-          />
-        </View>
+          <Text style={[styles.title, { color: theme.colors.text }]}>OBD-II Diagnostik</Text>
+          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Profesyonel Araç Tanılama</Text>
 
-        <TouchableOpacity 
-          style={[styles.button, { backgroundColor: theme.colors.primary }]} 
-          onPress={handleSubmit}
-        >
-          <Text style={styles.buttonText}>{isLogin ? 'Giriş Yap' : 'Kayıt Ol'}</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+          <View style={styles.tabContainer}>
+            <TouchableOpacity style={[styles.tab, isLogin && [styles.activeTab, { backgroundColor: theme.colors.primary }]]} onPress={() => setIsLogin(true)}>
+              <Text style={[styles.tabText, isLogin && styles.activeTabText]}>Giriş Yap</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, !isLogin && [styles.activeTab, { backgroundColor: theme.colors.primary }]]} onPress={() => setIsLogin(false)}>
+              <Text style={[styles.tabText, !isLogin && styles.activeTabText]}>Kayıt Ol</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.formContainer}>
+            <View style={[styles.inputContainer, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
+              <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} />
+              <TextInput style={[styles.input, { color: theme.colors.text }]} placeholder="Kullanıcı Adı" placeholderTextColor={theme.colors.textSecondary} value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} />
+            </View>
+
+            {!isLogin && (
+              <View style={[styles.inputContainer, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
+                <Ionicons name="mail-outline" size={20} color={theme.colors.textSecondary} />
+                <TextInput style={[styles.input, { color: theme.colors.text }]} placeholder="E-posta" placeholderTextColor={theme.colors.textSecondary} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} />
+              </View>
+            )}
+
+            <View style={[styles.inputContainer, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textSecondary} />
+              <TextInput style={[styles.input, { color: theme.colors.text }]} placeholder="Şifre" placeholderTextColor={theme.colors.textSecondary} value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoCorrect={false} />
+            </View>
+
+            <TouchableOpacity style={[styles.submitButton, { backgroundColor: theme.colors.primary }]} onPress={handleSubmit} disabled={loading}>
+              <Text style={styles.submitButtonText}>{loading ? 'Lütfen bekleyin...' : isLogin ? 'Giriş Yap' : 'Kayıt Ol'}</Text>
+            </TouchableOpacity>
+
+            {!isLogin && (
+              <View style={[styles.bonusInfo, { backgroundColor: theme.colors.surface }]}>
+                <Ionicons name="gift" size={20} color={theme.colors.success} />
+                <Text style={[styles.bonusText, { color: theme.colors.text }]}>Kayıt bonusu: 100 kredi hediye!</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: 24, justifyContent: 'center', flex: 1 },
-  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 32 },
-  tabs: { flexDirection: 'row', marginBottom: 24, borderRadius: 8, overflow: 'hidden' },
-  tab: { flex: 1, padding: 12, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
-  tabText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
-  input: { padding: 16, borderRadius: 8, marginBottom: 16 },
-  button: { padding: 16, borderRadius: 8, alignItems: 'center', marginTop: 8 },
-  buttonText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+  keyboardView: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40 },
+  logoContainer: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 24 },
+  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
+  subtitle: { fontSize: 14, textAlign: 'center', marginBottom: 32 },
+  tabContainer: { flexDirection: 'row', marginBottom: 32, borderRadius: 12, overflow: 'hidden' },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
+  activeTab: { elevation: 3 },
+  tabText: { fontSize: 16, fontWeight: '600', color: '#999' },
+  activeTabText: { color: '#FFFFFF' },
+  formContainer: { marginBottom: 24 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
+  input: { flex: 1, marginLeft: 12, fontSize: 16 },
+  submitButton: { paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, elevation: 3 },
+  submitButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+  bonusInfo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 8, marginTop: 16 },
+  bonusText: { fontSize: 14, marginLeft: 8, fontWeight: '600' },
 });
