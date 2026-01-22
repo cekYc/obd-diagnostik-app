@@ -1,13 +1,19 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export default function Market() {
   const { theme } = useTheme();
   return (
-    <LinearGradient colors={[theme.colors.background, theme.colors.surface]} style={{flex:1}}>
-      <Text style={{color: theme.colors.text, fontSize: 24, textAlign: 'center', marginTop: 40}}>Market Yakında!</Text>
-    </LinearGradient>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <Text style={[styles.title, { color: theme.colors.text }]}>Market</Text>
+      <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Yakında!</Text>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 12 },
+  subtitle: { fontSize: 16 },
+});
