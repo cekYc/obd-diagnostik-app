@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useOBD } from '../../contexts/OBDContext';
