@@ -16,7 +16,24 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "package": "com.obddiagnostics.app"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Scan and connect to OBD-II devices",
+        "NSBluetoothPeripheralUsageDescription": "Connect to OBD-II adapter",
+        "NSLocationWhenInUseUsageDescription": "Used for OBD device pairing"
+      }
     },
     "web": {
       "bundler": "metro",
