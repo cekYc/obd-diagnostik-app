@@ -1,3 +1,4 @@
+import React from 'react';
 import { Drawer } from 'expo-router/drawer';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
