@@ -1,6 +1,7 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { useState } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOBD } from '../../contexts/OBDContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,18 +9,37 @@ import { useRouter } from 'expo-router';
 
 export default function Dashboard() {
   const { theme } = useTheme();
+  const { user, logout, refreshUser } = useAuth();
   const { connectionStatus, obdData, selectedVehicle, connectDevice } = useOBD();
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Refresh data
+    await refreshUser();
     setTimeout(() => setRefreshing(false), 1000);
   };
 
   const handleConnect = async () => {
     await connectDevice();
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Çıkış Yap',
+      'Çıkış yapmak istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Çıkış Yap',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/auth');
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -37,6 +57,26 @@ export default function Dashboard() {
           />
         }
       >
+        {/* User Info Header */}
+        <View style={[styles.userHeader, { backgroundColor: theme.colors.cardBg }]}>
+          <View style={styles.userInfo}>
+            <Text style={[styles.username, { color: theme.colors.text }]}>
+              {user?.username}
+              {user?.is_admin && (
+                <Text style={[styles.adminBadge, { color: theme.colors.accent }]}> [Admin]</Text>
+              )}
+            </Text>
+            <View style={styles.creditContainer}>
+              <Ionicons name="wallet" size={16} color={theme.colors.success} />
+              <Text style={[styles.creditText, { color: theme.colors.success }]}>
+                {user?.credits || 0} Kredi
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Ionicons name="log-out-outline" size={24} color={theme.colors.error} />
+          </TouchableOpacity>
+        </View>
         {/* Connection Status */}
         <View style={[styles.card, { backgroundColor: theme.colors.cardBg }]}>
           <View style={styles.cardHeader}>
