@@ -12,7 +12,7 @@ export default function Index() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        router.replace('/(drawer)/dashboard');
+        router.replace('/(tabs)/home');
       } else {
         router.replace('/auth');
       }
