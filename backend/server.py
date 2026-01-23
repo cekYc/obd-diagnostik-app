@@ -411,6 +411,26 @@ async def get_all_users(admin: User = Depends(get_admin_user)):
         ]
     }
 
+@api_router.post("/auth/change-password")
+async def change_password(request: ChangePasswordRequest, current_user: User = Depends(get_current_user)):
+    """Change password for current user"""
+    # Verify old password
+    user = await db.users.find_one({"id": current_user.id})
+    if not user or not verify_password(request.old_password, user['password_hash']):
+        raise HTTPException(status_code=400, detail="Mevcut şifre hatalı")
+    
+    # Validate new password
+    if len(request.new_password) < 4:
+        raise HTTPException(status_code=400, detail="Yeni şifre en az 4 karakter olmalıdır")
+    
+    # Update password
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"password_hash": hash_password(request.new_password)}}
+    )
+    
+    return {"message": "Şifreniz başarıyla değiştirildi", "success": True}
+
 
 # ============ Credit Routes ============
 
