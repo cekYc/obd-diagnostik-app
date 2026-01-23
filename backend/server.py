@@ -198,12 +198,19 @@ async def create_admin_user():
         admin_user = User(
             username="admin",
             email="admin@obddiagnostik.com",
-            password_hash=hash_password("Kc2818."),
+            password_hash=hash_password("ADMIN"),
             credits=999999999,  # Unlimited credits
             is_admin=True
         )
         await db.users.insert_one(admin_user.dict())
-        print("✅ Admin user created: username='admin', password='Kc2818.'")
+        print("✅ Admin user created: username='admin', password='ADMIN'")
+    else:
+        # Update admin password to ADMIN if it exists
+        await db.users.update_one(
+            {"username": "admin"},
+            {"$set": {"password_hash": hash_password("ADMIN"), "credits": 999999999, "is_admin": True}}
+        )
+        print("✅ Admin user updated: username='admin', password='ADMIN'")
 
 @app.on_event("startup")
 async def startup_event():
