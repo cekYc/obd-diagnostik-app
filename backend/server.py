@@ -299,6 +299,115 @@ async def get_me(current_user: User = Depends(get_current_user)):
     )
 
 
+# ============ Password Reset Routes ============
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Send password reset code (always returns success for security)"""
+    user = await db.users.find_one({"email": request.email})
+    if user:
+        # Store verification code (0000 for testing)
+        await db.verification_codes.update_one(
+            {"email": request.email, "type": "password_reset"},
+            {"$set": {"code": "0000", "created_at": datetime.utcnow()}},
+            upsert=True
+        )
+    # Always return success to prevent email enumeration
+    return {"message": "Eğer bu e-posta kayıtlıysa, doğrulama kodu gönderildi", "success": True}
+
+@api_router.post("/auth/verify-reset-code")
+async def verify_reset_code(request: VerifyCodeRequest):
+    """Verify the password reset code"""
+    verification = await db.verification_codes.find_one({
+        "email": request.email,
+        "type": "password_reset",
+        "code": request.code
+    })
+    
+    if not verification:
+        raise HTTPException(status_code=400, detail="Doğrulama kodu hatalı")
+    
+    return {"message": "Doğrulama başarılı", "verified": True}
+
+@api_router.post("/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Reset password with verification code"""
+    # Verify code
+    verification = await db.verification_codes.find_one({
+        "email": request.email,
+        "type": "password_reset",
+        "code": request.code
+    })
+    
+    if not verification:
+        raise HTTPException(status_code=400, detail="Doğrulama kodu hatalı")
+    
+    # Update password
+    result = await db.users.update_one(
+        {"email": request.email},
+        {"$set": {"password_hash": hash_password(request.new_password)}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    
+    # Delete verification code
+    await db.verification_codes.delete_one({"email": request.email, "type": "password_reset"})
+    
+    return {"message": "Şifreniz başarıyla değiştirildi", "success": True}
+
+@api_router.post("/auth/send-verification")
+async def send_verification(request: ForgotPasswordRequest):
+    """Send email verification code for new registration"""
+    # Store verification code (0000 for testing)
+    await db.verification_codes.update_one(
+        {"email": request.email, "type": "email_verification"},
+        {"$set": {"code": "0000", "created_at": datetime.utcnow()}},
+        upsert=True
+    )
+    return {"message": "Doğrulama kodu gönderildi", "success": True}
+
+@api_router.post("/auth/verify-email")
+async def verify_email(request: VerifyEmailRequest):
+    """Verify email with code"""
+    verification = await db.verification_codes.find_one({
+        "email": request.email,
+        "type": "email_verification",
+        "code": request.code
+    })
+    
+    if not verification:
+        raise HTTPException(status_code=400, detail="Doğrulama kodu hatalı")
+    
+    # Mark email as verified
+    await db.users.update_one(
+        {"email": request.email},
+        {"$set": {"email_verified": True}}
+    )
+    
+    # Delete verification code
+    await db.verification_codes.delete_one({"email": request.email, "type": "email_verification"})
+    
+    return {"message": "E-posta doğrulandı", "verified": True}
+
+@api_router.get("/admin/users")
+async def get_all_users(admin: User = Depends(get_admin_user)):
+    """Admin only: Get all users"""
+    users = await db.users.find({}).to_list(1000)
+    return {
+        "users": [
+            {
+                "id": u['id'],
+                "username": u['username'],
+                "email": u['email'],
+                "credits": u['credits'],
+                "is_admin": u.get('is_admin', False)
+            }
+            for u in users
+        ]
+    }
+
+
 # ============ Credit Routes ============
 
 @api_router.post("/credits/gift")
