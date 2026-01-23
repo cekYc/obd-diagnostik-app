@@ -11,9 +11,13 @@ export default function Home() {
   const { user, logout, refreshUser, token } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [showGiftModal, setShowGiftModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [giftUsername, setGiftUsername] = useState('');
   const [giftAmount, setGiftAmount] = useState('');
   const [giftLoading, setGiftLoading] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const router = useRouter();
 
   const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
