@@ -78,6 +78,48 @@ export default function Home() {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword) {
+      Alert.alert('Hata', 'Eski ve yeni şifreyi girin');
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      Alert.alert('Hata', 'Yeni şifre en az 4 karakter olmalıdır');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          old_password: oldPassword,
+          new_password: newPassword,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        Alert.alert('Başarılı', data.message);
+        setShowPasswordModal(false);
+        setOldPassword('');
+        setNewPassword('');
+      } else {
+        const error = await response.json();
+        Alert.alert('Hata', error.detail || 'Şifre değiştirilemedi');
+      }
+    } catch (error) {
+      Alert.alert('Hata', 'Bağlantı hatası');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   const adminFeatures = [
     { icon: 'gift', label: 'Kredi Hediye Et', onPress: () => setShowGiftModal(true) },
     { icon: 'people', label: 'Kullanıcılar', onPress: () => Alert.alert('Yakında', 'Bu özellik yakında eklenecek') },
