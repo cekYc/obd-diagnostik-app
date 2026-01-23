@@ -272,7 +272,7 @@ export default function AuthScreen() {
         <View style={[styles.testInfo, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <Ionicons name="information-circle" size={20} color={theme.colors.accent} />
           <Text style={[styles.testInfoText, { color: theme.colors.textSecondary }]}>
-            Test için: admin / ADMIN
+            Test için: admin / admin
           </Text>
         </View>
       </View>
