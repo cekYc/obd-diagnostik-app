@@ -122,8 +122,8 @@ export default function Home() {
 
   const adminFeatures = [
     { icon: 'gift', label: 'Kredi Hediye Et', onPress: () => setShowGiftModal(true) },
+    { icon: 'key', label: 'Şifre Değiştir', onPress: () => setShowPasswordModal(true) },
     { icon: 'people', label: 'Kullanıcılar', onPress: () => Alert.alert('Yakında', 'Bu özellik yakında eklenecek') },
-    { icon: 'stats-chart', label: 'İstatistikler', onPress: () => Alert.alert('Yakında', 'Bu özellik yakında eklenecek') },
     { icon: 'settings', label: 'Sistem Ayarları', onPress: () => Alert.alert('Yakında', 'Bu özellik yakında eklenecek') },
   ];
 
