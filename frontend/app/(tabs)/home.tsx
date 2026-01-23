@@ -319,6 +319,62 @@ export default function Home() {
           </View>
         </View>
       </Modal>
+
+      {/* Change Password Modal */}
+      <Modal
+        visible={showPasswordModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPasswordModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.cardBg }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Şifre Değiştir</Text>
+              <TouchableOpacity onPress={() => setShowPasswordModal(false)}>
+                <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.inputContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="Eski Şifre"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={oldPassword}
+                onChangeText={setOldPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={[styles.inputContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+              <Ionicons name="lock-open-outline" size={20} color={theme.colors.textSecondary} />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="Yeni Şifre"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.giftButton, { backgroundColor: theme.colors.primary }]}
+              onPress={handleChangePassword}
+              disabled={passwordLoading}
+            >
+              <Ionicons name="key" size={20} color="#FFF" />
+              <Text style={styles.giftButtonText}>
+                {passwordLoading ? 'Değiştiriliyor...' : 'Şifreyi Değiştir'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
