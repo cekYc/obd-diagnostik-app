@@ -93,6 +93,10 @@ class VerifyEmailRequest(BaseModel):
     email: EmailStr
     code: str
 
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
 class VehicleInfo(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
