@@ -77,14 +77,15 @@ export default function AuthScreen() {
         body: JSON.stringify({ email }),
       });
 
+      const data = await response.json().catch(() => ({}));
       if (response.ok) {
         setPendingEmail(email);
-        Alert.alert('Başarılı', 'E-posta adresinize doğrulama kodu gönderildi', [
+        const debugNote = data?.debug_code ? `\nKod (debug): ${data.debug_code}` : '';
+        Alert.alert('Başarılı', `E-posta adresinize doğrulama kodu gönderildi${debugNote}`, [
           { text: 'Tamam', onPress: () => setStep('verify_email') }
         ]);
       } else {
-        const error = await response.json();
-        Alert.alert('Hata', error.detail || 'Bir hata oluştu');
+        Alert.alert('Hata', data.detail || 'Bir hata oluştu');
       }
     } catch (error: any) {
       Alert.alert('Hata', 'Bağlantı hatası');
@@ -156,9 +157,11 @@ export default function AuthScreen() {
         body: JSON.stringify({ email }),
       });
 
+      const data = await response.json().catch(() => ({}));
       if (response.ok) {
         setPendingEmail(email);
-        Alert.alert('Başarılı', 'Doğrulama kodu e-posta adresinize gönderildi', [
+        const debugNote = data?.debug_code ? `\nKod (debug): ${data.debug_code}` : '';
+        Alert.alert('Başarılı', `Doğrulama kodu e-posta adresinize gönderildi${debugNote}`, [
           { text: 'Tamam', onPress: () => setStep('reset_password') }
         ]);
       } else {
@@ -269,12 +272,6 @@ export default function AuthScreen() {
           </Text>
         </TouchableOpacity>
 
-        <View style={[styles.testInfo, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Ionicons name="information-circle" size={20} color={theme.colors.accent} />
-          <Text style={[styles.testInfoText, { color: theme.colors.textSecondary }]}>
-            Test için: admin / admin
-          </Text>
-        </View>
       </View>
     </>
   );
@@ -433,20 +430,13 @@ export default function AuthScreen() {
         <Ionicons name="keypad-outline" size={20} color={theme.colors.textSecondary} />
         <TextInput
           style={[styles.input, { color: theme.colors.text, textAlign: 'center', fontSize: 24, letterSpacing: 8 }]}
-          placeholder="0000"
+          placeholder="000000"
           placeholderTextColor={theme.colors.textSecondary}
           value={verificationCode}
           onChangeText={setVerificationCode}
           keyboardType="number-pad"
-          maxLength={4}
+          maxLength={6}
         />
-      </View>
-
-      <View style={[styles.testInfo, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Ionicons name="information-circle" size={20} color={theme.colors.accent} />
-        <Text style={[styles.testInfoText, { color: theme.colors.textSecondary }]}>
-          Test için kod: 0000
-        </Text>
       </View>
 
       <TouchableOpacity
@@ -480,20 +470,13 @@ export default function AuthScreen() {
         <Ionicons name="keypad-outline" size={20} color={theme.colors.textSecondary} />
         <TextInput
           style={[styles.input, { color: theme.colors.text, textAlign: 'center', fontSize: 24, letterSpacing: 8 }]}
-          placeholder="0000"
+          placeholder="000000"
           placeholderTextColor={theme.colors.textSecondary}
           value={verificationCode}
           onChangeText={setVerificationCode}
           keyboardType="number-pad"
-          maxLength={4}
+          maxLength={6}
         />
-      </View>
-
-      <View style={[styles.testInfo, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-        <Ionicons name="information-circle" size={20} color={theme.colors.accent} />
-        <Text style={[styles.testInfoText, { color: theme.colors.textSecondary }]}>
-          Test için kod: 0000
-        </Text>
       </View>
 
       <View style={[styles.inputContainer, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
@@ -570,6 +553,4 @@ const styles = StyleSheet.create({
   forgotPassword: { textAlign: 'right', marginBottom: 16, fontWeight: '600' },
   backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   backText: { marginLeft: 8, fontSize: 16, fontWeight: '600' },
-  testInfo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 8, marginTop: 16, borderWidth: 1 },
-  testInfoText: { fontSize: 14, marginLeft: 8 },
 });

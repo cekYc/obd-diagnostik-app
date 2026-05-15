@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 import random
+import secrets
 import string
 
 
@@ -25,9 +26,21 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Security
-SECRET_KEY = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production-2024')
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable is required")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 * 24 * 60  # 30 days
+
+ADMIN_BOOTSTRAP_ENABLED = os.environ.get('ADMIN_BOOTSTRAP_ENABLED', 'false').lower() == 'true'
+ADMIN_BOOTSTRAP_USERNAME = os.environ.get('ADMIN_BOOTSTRAP_USERNAME', 'admin')
+ADMIN_BOOTSTRAP_PASSWORD = os.environ.get('ADMIN_BOOTSTRAP_PASSWORD')
+ADMIN_BOOTSTRAP_EMAIL = os.environ.get('ADMIN_BOOTSTRAP_EMAIL', 'admin@obddiagnostik.com')
+ADMIN_BOOTSTRAP_FORCE_RESET = os.environ.get('ADMIN_BOOTSTRAP_FORCE_RESET', 'false').lower() == 'true'
+
+VERIFICATION_CODE_LENGTH = int(os.environ.get('VERIFICATION_CODE_LENGTH', '6'))
+VERIFICATION_CODE_TTL_MINUTES = int(os.environ.get('VERIFICATION_CODE_TTL_MINUTES', '10'))
+DEBUG_VERIFICATION_CODES = os.environ.get('DEBUG_VERIFICATION_CODES', 'false').lower() == 'true'
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
@@ -172,6 +185,35 @@ def generate_username_suggestions(base_username: str, count: int = 3) -> List[st
         suggestions.append(f"{base_username}{suffix}")
     return suggestions
 
+def generate_verification_code(length: int = VERIFICATION_CODE_LENGTH) -> str:
+    safe_length = max(4, min(10, length))
+    return ''.join(secrets.choice(string.digits) for _ in range(safe_length))
+
+def is_verification_expired(verification: dict) -> bool:
+    now = datetime.utcnow()
+    expires_at = verification.get("expires_at")
+    if isinstance(expires_at, datetime):
+        return expires_at < now
+    created_at = verification.get("created_at")
+    if isinstance(created_at, datetime):
+        return created_at + timedelta(minutes=VERIFICATION_CODE_TTL_MINUTES) < now
+    return True
+
+async def upsert_verification_code(email: str, code_type: str) -> str:
+    code = generate_verification_code()
+    await db.verification_codes.update_one(
+        {"email": email, "type": code_type},
+        {
+            "$set": {
+                "code": code,
+                "created_at": datetime.utcnow(),
+                "expires_at": datetime.utcnow() + timedelta(minutes=VERIFICATION_CODE_TTL_MINUTES),
+            }
+        },
+        upsert=True
+    )
+    return code
+
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
     try:
         token = credentials.credentials
@@ -196,25 +238,37 @@ async def get_admin_user(current_user: User = Depends(get_current_user)) -> User
 # ============ Initialization ============
 
 async def create_admin_user():
-    """Create admin user if not exists"""
-    admin = await db.users.find_one({"username": "admin"})
-    if not admin:
-        admin_user = User(
-            username="admin",
-            email="admin@obddiagnostik.com",
-            password_hash=hash_password("admin"),
-            credits=999999999,  # Unlimited credits
-            is_admin=True
-        )
-        await db.users.insert_one(admin_user.dict())
-        print("✅ Admin user created: username='admin', password='admin'")
-    else:
-        # Update admin password to admin if it exists
+    """Create admin user if enabled via environment"""
+    logger = logging.getLogger(__name__)
+    if not ADMIN_BOOTSTRAP_ENABLED:
+        return
+    if not ADMIN_BOOTSTRAP_PASSWORD:
+        logger.warning("ADMIN_BOOTSTRAP_ENABLED is true but ADMIN_BOOTSTRAP_PASSWORD is not set; skipping admin bootstrap")
+        return
+
+    admin = await db.users.find_one({"username": ADMIN_BOOTSTRAP_USERNAME})
+    if admin and not ADMIN_BOOTSTRAP_FORCE_RESET:
+        logger.info("Admin user already exists; bootstrap skipped for %s", ADMIN_BOOTSTRAP_USERNAME)
+        return
+
+    admin_payload = {
+        "username": ADMIN_BOOTSTRAP_USERNAME,
+        "email": ADMIN_BOOTSTRAP_EMAIL,
+        "password_hash": hash_password(ADMIN_BOOTSTRAP_PASSWORD),
+        "credits": 999999999,
+        "is_admin": True,
+    }
+
+    if admin:
         await db.users.update_one(
-            {"username": "admin"},
-            {"$set": {"password_hash": hash_password("admin"), "credits": 999999999, "is_admin": True}}
+            {"username": ADMIN_BOOTSTRAP_USERNAME},
+            {"$set": admin_payload}
         )
-        print("✅ Admin user updated: username='admin', password='admin'")
+        logger.info("Admin user reset via bootstrap: %s", ADMIN_BOOTSTRAP_USERNAME)
+    else:
+        admin_user = User(**admin_payload)
+        await db.users.insert_one(admin_user.dict())
+        logger.info("Admin user created via bootstrap: %s", ADMIN_BOOTSTRAP_USERNAME)
 
 @app.on_event("startup")
 async def startup_event():
@@ -310,12 +364,13 @@ async def forgot_password(request: ForgotPasswordRequest):
     """Send password reset code (always returns success for security)"""
     user = await db.users.find_one({"email": request.email})
     if user:
-        # Store verification code (0000 for testing)
-        await db.verification_codes.update_one(
-            {"email": request.email, "type": "password_reset"},
-            {"$set": {"code": "0000", "created_at": datetime.utcnow()}},
-            upsert=True
-        )
+        code = await upsert_verification_code(request.email, "password_reset")
+        if DEBUG_VERIFICATION_CODES:
+            return {
+                "message": "Eğer bu e-posta kayıtlıysa, doğrulama kodu gönderildi",
+                "success": True,
+                "debug_code": code,
+            }
     # Always return success to prevent email enumeration
     return {"message": "Eğer bu e-posta kayıtlıysa, doğrulama kodu gönderildi", "success": True}
 
@@ -327,9 +382,11 @@ async def verify_reset_code(request: VerifyCodeRequest):
         "type": "password_reset",
         "code": request.code
     })
-    
-    if not verification:
-        raise HTTPException(status_code=400, detail="Doğrulama kodu hatalı")
+
+    if not verification or is_verification_expired(verification):
+        if verification and is_verification_expired(verification):
+            await db.verification_codes.delete_one({"_id": verification["_id"]})
+        raise HTTPException(status_code=400, detail="Doğrulama kodu hatalı veya süresi dolmuş")
     
     return {"message": "Doğrulama başarılı", "verified": True}
 
@@ -342,9 +399,11 @@ async def reset_password(request: ResetPasswordRequest):
         "type": "password_reset",
         "code": request.code
     })
-    
-    if not verification:
-        raise HTTPException(status_code=400, detail="Doğrulama kodu hatalı")
+
+    if not verification or is_verification_expired(verification):
+        if verification and is_verification_expired(verification):
+            await db.verification_codes.delete_one({"_id": verification["_id"]})
+        raise HTTPException(status_code=400, detail="Doğrulama kodu hatalı veya süresi dolmuş")
     
     # Update password
     result = await db.users.update_one(
@@ -356,20 +415,18 @@ async def reset_password(request: ResetPasswordRequest):
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
     
     # Delete verification code
-    await db.verification_codes.delete_one({"email": request.email, "type": "password_reset"})
+    await db.verification_codes.delete_one({"_id": verification["_id"]})
     
     return {"message": "Şifreniz başarıyla değiştirildi", "success": True}
 
 @api_router.post("/auth/send-verification")
 async def send_verification(request: ForgotPasswordRequest):
     """Send email verification code for new registration"""
-    # Store verification code (0000 for testing)
-    await db.verification_codes.update_one(
-        {"email": request.email, "type": "email_verification"},
-        {"$set": {"code": "0000", "created_at": datetime.utcnow()}},
-        upsert=True
-    )
-    return {"message": "Doğrulama kodu gönderildi", "success": True}
+    code = await upsert_verification_code(request.email, "email_verification")
+    response = {"message": "Doğrulama kodu gönderildi", "success": True}
+    if DEBUG_VERIFICATION_CODES:
+        response["debug_code"] = code
+    return response
 
 @api_router.post("/auth/verify-email")
 async def verify_email(request: VerifyEmailRequest):
@@ -379,9 +436,11 @@ async def verify_email(request: VerifyEmailRequest):
         "type": "email_verification",
         "code": request.code
     })
-    
-    if not verification:
-        raise HTTPException(status_code=400, detail="Doğrulama kodu hatalı")
+
+    if not verification or is_verification_expired(verification):
+        if verification and is_verification_expired(verification):
+            await db.verification_codes.delete_one({"_id": verification["_id"]})
+        raise HTTPException(status_code=400, detail="Doğrulama kodu hatalı veya süresi dolmuş")
     
     # Mark email as verified
     await db.users.update_one(
@@ -390,7 +449,7 @@ async def verify_email(request: VerifyEmailRequest):
     )
     
     # Delete verification code
-    await db.verification_codes.delete_one({"email": request.email, "type": "email_verification"})
+    await db.verification_codes.delete_one({"_id": verification["_id"]})
     
     return {"message": "E-posta doğrulandı", "verified": True}
 
@@ -600,10 +659,15 @@ async def root():
 app.include_router(api_router)
 
 # CORS
+raw_allowed_origins = os.environ.get("ALLOWED_ORIGINS", "")
+allowed_origins = [origin.strip() for origin in raw_allowed_origins.split(",") if origin.strip()]
+cors_allow_origins = allowed_origins or ["*"]
+cors_allow_credentials = bool(allowed_origins)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
+    allow_credentials=cors_allow_credentials,
+    allow_origins=cors_allow_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
