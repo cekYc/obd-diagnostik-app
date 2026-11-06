@@ -48,3 +48,14 @@ Backend (.env):
 Frontend (.env):
 
 - EXPO_PUBLIC_BACKEND_URL
+
+## Verification delivery limitation
+
+Email delivery is not implemented. With `DEBUG_VERIFICATION_CODES=false`,
+registration and password reset generate a random code but do not deliver it.
+Do not deploy these flows until an email provider and delivery tests are added.
+For local development only, `DEBUG_VERIFICATION_CODES=true` returns the code
+in the API response. Never enable this setting on a public deployment.
+
+`VERIFICATION_CODE_LENGTH` supports 4 through 10 digits; values outside that
+range are clamped by the generator. Both code inputs accept up to 10 digits.

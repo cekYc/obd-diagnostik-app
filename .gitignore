@@ -117,3 +117,6 @@ android-sdk/ -e
 # Environment files
 *.env
 *.env.*
+
+# Track setup templates without tracking local secrets.
+!**/.env.example

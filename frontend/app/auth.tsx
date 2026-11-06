@@ -435,7 +435,7 @@ export default function AuthScreen() {
           value={verificationCode}
           onChangeText={setVerificationCode}
           keyboardType="number-pad"
-          maxLength={6}
+          maxLength={10}
         />
       </View>
 
@@ -475,7 +475,7 @@ export default function AuthScreen() {
           value={verificationCode}
           onChangeText={setVerificationCode}
           keyboardType="number-pad"
-          maxLength={6}
+          maxLength={10}
         />
       </View>
 
